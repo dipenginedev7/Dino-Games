@@ -23,6 +23,7 @@
       background-color: #f4f4f4;
       border: 2px solid #333;
       border-radius: 10px;
+      touch-action: none; /* Prevent scrolling when touching the canvas */
     }
     #score {
       font-size: 24px;
@@ -47,7 +48,7 @@
   <div id="gameContainer">
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="score">Score: 0</div>
-    <div id="gameOverMessage">Game Over! Press Space to Restart</div>
+    <div id="gameOverMessage">Game Over! Press Space or Tap to Restart</div>
   </div>
   <footer>
     Made with ❤️ by Arghyadip
@@ -60,9 +61,9 @@
     const gameOverMessage = document.getElementById('gameOverMessage');
 
     // Audio elements
-    const jumpSound = new Audio("/jump.mp3");
-    const gameOverSound = new Audio("/gameover.wav");
-    const milestoneSound = new Audio("/achivement.wav");
+    const jumpSound = new Audio('jump.mp3');
+    const gameOverSound = new Audio('gameover.wav');
+    const milestoneSound = new Audio('achivement.wav');
 
     // Emojis
     const dinoEmoji = '🦖';
@@ -236,6 +237,16 @@
         } else {
           dino.jump();
         }
+      }
+    });
+
+    // Handle touch events for mobile
+    canvas.addEventListener('touchstart', (event) => {
+      event.preventDefault(); // Prevent scrolling
+      if (isGameOver) {
+        resetGame();
+      } else {
+        dino.jump();
       }
     });
   </script>
