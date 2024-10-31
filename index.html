@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Dino Game</title>
+  <link rel="shortcut icon" type="image/x-icon" href="/Arghyadip.jpg">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #e0e0e0;
+      font-family: Arial, sans-serif;
+    }
+    #gameContainer {
+      text-align: center;
+    }
+    canvas {
+      background-color: #f4f4f4;
+      border: 2px solid #333;
+      border-radius: 10px;
+    }
+    #score {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-top: 10px;
+    }
+    #gameOverMessage {
+      font-size: 28px;
+      font-weight: bold;
+      color: #ff4c4c;
+      display: none;
+    }
+    footer {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="score">Score: 0</div>
+    <div id="gameOverMessage">Game Over! Press Space to Restart</div>
+  </div>
+  <footer>
+    Made with ❤️ by Arghyadip
+  </footer>
+  
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const gameOverMessage = document.getElementById('gameOverMessage');
+
+    // Audio elements
+    const jumpSound = new Audio("/jump.mp3");
+    const gameOverSound = new Audio("/gameover.wav");
+    const milestoneSound = new Audio("/achivement.wav");
+
+    // Emojis
+    const dinoEmoji = '🦖';
+    const cactusEmoji = '🌵';
+    const treeEmoji = '🌲';
+    const cloudEmoji = '☁️';
+    const birdEmoji = '🐦';
+
+    // Classes
+    class Dino {
+      constructor() {
+        this.x = 50;
+        this.y = 300;
+        this.size = 50;
+        this.isJumping = false;
+        this.jumpSpeed = 0;
+        this.gravity = 0.5;
+      }
+      jump() {
+        if (!this.isJumping) {
+          this.isJumping = true;
+          this.jumpSpeed = 12;
+          jumpSound.play(); // Play jump sound
+        }
+      }
+      update() {
+        if (this.isJumping) {
+          this.y -= this.jumpSpeed;
+          this.jumpSpeed -= this.gravity;
+          if (this.y >= 300) {
+            this.y = 300;
+            this.isJumping = false;
+          }
+        }
+      }
+      draw() {
+        ctx.font = `${this.size}px Arial`;
+        ctx.fillText(dinoEmoji, this.x, this.y + this.size);
+      }
+    }
+
+    class Cactus {
+      constructor(speed) {
+        this.x = canvas.width;
+        this.y = 300;
+        this.size = 50;
+        this.speed = speed;
+      }
+      resetPosition() {
+        this.x = canvas.width;
+        this.speed += 0.5;
+      }
+      update() {
+        this.x -= this.speed;
+        if (this.x < 0) {
+          this.resetPosition();
+          return true;
+        }
+        return false;
+      }
+      draw() {
+        ctx.font = `${this.size}px Arial`;
+        ctx.fillText(cactusEmoji, this.x, this.y + this.size);
+      }
+    }
+
+    class BackgroundObject {
+      constructor(emoji, y, speed, size) {
+        this.x = Math.random() * canvas.width + canvas.width;
+        this.y = y;
+        this.size = size;
+        this.speed = speed;
+        this.emoji = emoji;
+      }
+      update() {
+        this.x -= this.speed;
+        if (this.x < -this.size) {
+          this.x = Math.random() * canvas.width + canvas.width;
+        }
+      }
+      draw() {
+        ctx.font = `${this.size}px Arial`;
+        ctx.fillText(this.emoji, this.x, this.y + this.size);
+      }
+    }
+
+    // Game objects
+    const dino = new Dino();
+    const cactus = new Cactus(5);
+    const trees = [new BackgroundObject(treeEmoji, 310, 3, 40)];
+    const clouds = [new BackgroundObject(cloudEmoji, 50, 1, 30), new BackgroundObject(cloudEmoji, 80, 1.5, 35)];
+    const birds = [new BackgroundObject(birdEmoji, 100, 2, 25)];
+
+    let isGameOver = false;
+    let score = 0;
+
+    // Game functions
+    function resetGame() {
+      dino.y = 300;
+      cactus.resetPosition();
+      score = 0;
+      isGameOver = false;
+      scoreElement.textContent = `Score: ${score}`;
+      gameOverMessage.style.display = 'none';
+      requestAnimationFrame(gameLoop);
+    }
+
+    function checkCollision() {
+      return (
+        dino.x < cactus.x + cactus.size &&
+        dino.x + dino.size > cactus.x &&
+        dino.y < cactus.y + cactus.size &&
+        dino.y + dino.size > cactus.y
+      );
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update and draw dino
+      dino.update();
+      dino.draw();
+
+      // Update and draw cactus
+      if (!isGameOver) {
+        const passed = cactus.update();
+        cactus.draw();
+        
+        // Increase score if cactus passed
+        if (passed) {
+          score++;
+          scoreElement.textContent = `Score: ${score}`;
+          
+          // Play milestone sound every 10 points
+          if (score % 10 === 0) {
+            milestoneSound.play();
+          }
+        }
+
+        // Increase cactus speed every 10 points
+        if (score % 10 === 0 && score !== 0) {
+          cactus.speed += 0.1;
+          trees.forEach(tree => tree.speed += 0.05);
+        }
+
+        // Draw background elements
+        trees.forEach(tree => { tree.update(); tree.draw(); });
+        clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
+        birds.forEach(bird => { bird.update(); bird.draw(); });
+
+        // Check for collision
+        if (checkCollision()) {
+          isGameOver = true;
+          gameOverMessage.style.display = 'block';
+          gameOverSound.play(); // Play game over sound
+        }
+      }
+
+      // Keep the loop running if not game over
+      if (!isGameOver) requestAnimationFrame(gameLoop);
+    }
+
+    // Start game loop initially
+    gameLoop();
+
+    // Handle jump on Space key
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Space') {
+        if (isGameOver) {
+          resetGame();
+        } else {
+          dino.jump();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
