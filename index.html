@@ -13,23 +13,33 @@
       align-items: center;
       min-height: 100vh;
       margin: 0;
-      background-color: #e0e0e0;
+      background-color: #101820;
       font-family: Arial, sans-serif;
+      color: #f1f1f1;
     }
     #gameContainer {
       text-align: center;
     }
     canvas {
-      background-color: #f4f4f4;
-      border: 2px solid #333;
+      background-color: #333;
+      border: 2px solid #ff5733;
       border-radius: 10px;
-      touch-action: none; /* Prevent scrolling when touching the canvas */
+      touch-action: none;
     }
-    #score {
+    #score, #difficultyMessage {
       font-size: 24px;
       font-weight: bold;
-      color: #333;
       margin-top: 10px;
+    }
+    #difficultyMessage {
+      color: #ff4c4c;
+      display: none;
+      animation: fadeInOut 2s ease-in-out;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+      100% { opacity: 0; transform: scale(0.8); }
     }
     #gameOverMessage {
       font-size: 28px;
@@ -37,17 +47,41 @@
       color: #ff4c4c;
       display: none;
     }
+    #difficultySelection {
+      margin: 20px 0;
+    }
+    .difficultyButton {
+      margin: 0 10px;
+      padding: 8px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #101820;
+      background-color: #ff5733;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .difficultyButton:hover {
+      background-color: #ff8c66;
+    }
     footer {
       margin-top: 20px;
       font-size: 16px;
-      color: #555;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
   <div id="gameContainer">
+    <div id="difficultySelection">
+      <button class="difficultyButton" onclick="selectDifficulty('Easy')">Easy</button>
+      <button class="difficultyButton" onclick="selectDifficulty('Medium')">Medium</button>
+      <button class="difficultyButton" onclick="selectDifficulty('Legend')">Legend</button>
+    </div>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="score">Score: 0</div>
+    <div id="difficultyMessage">Game on <span id="selectedMode">Easy</span> mode!</div>
     <div id="gameOverMessage">Game Over! Press Space or Tap to Restart</div>
   </div>
   <footer>
@@ -59,6 +93,8 @@
     const ctx = canvas.getContext('2d');
     const scoreElement = document.getElementById('score');
     const gameOverMessage = document.getElementById('gameOverMessage');
+    const difficultyMessage = document.getElementById('difficultyMessage');
+    const selectedModeElement = document.getElementById('selectedMode');
 
     // Audio elements
     const jumpSound = new Audio('jump.mp3');
@@ -71,6 +107,10 @@
     const treeEmoji = '🌲';
     const cloudEmoji = '☁️';
     const birdEmoji = '🐦';
+
+    let cactusSpeed = 3; // Default speed for cactus
+    let isGameOver = false;
+    let score = 0;
 
     // Classes
     class Dino {
@@ -86,7 +126,7 @@
         if (!this.isJumping) {
           this.isJumping = true;
           this.jumpSpeed = 12;
-          jumpSound.play(); // Play jump sound
+          jumpSound.play();
         }
       }
       update() {
@@ -106,15 +146,15 @@
     }
 
     class Cactus {
-      constructor(speed) {
+      constructor() {
         this.x = canvas.width;
         this.y = 300;
         this.size = 50;
-        this.speed = speed;
+        this.speed = cactusSpeed;
       }
       resetPosition() {
         this.x = canvas.width;
-        this.speed += 0.5;
+        this.speed = cactusSpeed;
       }
       update() {
         this.x -= this.speed;
@@ -130,35 +170,21 @@
       }
     }
 
-    class BackgroundObject {
-      constructor(emoji, y, speed, size) {
-        this.x = Math.random() * canvas.width + canvas.width;
-        this.y = y;
-        this.size = size;
-        this.speed = speed;
-        this.emoji = emoji;
-      }
-      update() {
-        this.x -= this.speed;
-        if (this.x < -this.size) {
-          this.x = Math.random() * canvas.width + canvas.width;
-        }
-      }
-      draw() {
-        ctx.font = `${this.size}px Arial`;
-        ctx.fillText(this.emoji, this.x, this.y + this.size);
-      }
-    }
-
-    // Game objects
     const dino = new Dino();
-    const cactus = new Cactus(5);
-    const trees = [new BackgroundObject(treeEmoji, 310, 3, 40)];
-    const clouds = [new BackgroundObject(cloudEmoji, 50, 1, 30), new BackgroundObject(cloudEmoji, 80, 1.5, 35)];
-    const birds = [new BackgroundObject(birdEmoji, 100, 2, 25)];
+    const cactus = new Cactus();
 
-    let isGameOver = false;
-    let score = 0;
+    // Set difficulty level
+    function selectDifficulty(level) {
+      if (level === 'Easy') cactusSpeed = 3;
+      else if (level === 'Medium') cactusSpeed = 5;
+      else if (level === 'Legend') cactusSpeed = 8;
+
+      selectedModeElement.textContent = level;
+      difficultyMessage.style.display = 'block';
+      setTimeout(() => { difficultyMessage.style.display = 'none'; }, 2000);
+
+      resetGame();
+    }
 
     // Game functions
     function resetGame() {
@@ -182,51 +208,30 @@
 
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Update and draw dino
       dino.update();
       dino.draw();
-
-      // Update and draw cactus
+      
       if (!isGameOver) {
         const passed = cactus.update();
         cactus.draw();
         
-        // Increase score if cactus passed
         if (passed) {
           score++;
           scoreElement.textContent = `Score: ${score}`;
-          
-          // Play milestone sound every 10 points
-          if (score % 10 === 0) {
-            milestoneSound.play();
-          }
+          if (score % 10 === 0) milestoneSound.play();
         }
 
-        // Increase cactus speed every 10 points
-        if (score % 10 === 0 && score !== 0) {
-          cactus.speed += 0.1;
-          trees.forEach(tree => tree.speed += 0.05);
-        }
-
-        // Draw background elements
-        trees.forEach(tree => { tree.update(); tree.draw(); });
-        clouds.forEach(cloud => { cloud.update(); cloud.draw(); });
-        birds.forEach(bird => { bird.update(); bird.draw(); });
-
-        // Check for collision
         if (checkCollision()) {
           isGameOver = true;
           gameOverMessage.style.display = 'block';
-          gameOverSound.play(); // Play game over sound
+          gameOverSound.play();
         }
       }
 
-      // Keep the loop running if not game over
       if (!isGameOver) requestAnimationFrame(gameLoop);
     }
 
-    // Start game loop initially
+    // Start game initially on selected difficulty
     gameLoop();
 
     // Handle jump on Space key
@@ -242,7 +247,7 @@
 
     // Handle touch events for mobile
     canvas.addEventListener('touchstart', (event) => {
-      event.preventDefault(); // Prevent scrolling
+      event.preventDefault();
       if (isGameOver) {
         resetGame();
       } else {
